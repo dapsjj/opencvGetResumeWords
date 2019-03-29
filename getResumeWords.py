@@ -83,10 +83,10 @@ def save_resume_txt():
                     h,w = binary.shape #获取高和宽
                     mul = 1.5
                     resize_img = cv2.resize(binary, (int(w * mul), int(h * mul)))
-                    # resize_img = cv2.bilateralFilter(resize_img, 5, 105, 105)  # 双边滤波
-                    # resize_img = cv2.morphologyEx(resize_img, cv2.MORPH_OPEN, kernel1)
+                    resize_img = cv2.bilateralFilter(resize_img, 5, 105, 105)  # 双边滤波
+                    resize_img = cv2.morphologyEx(resize_img, cv2.MORPH_OPEN, kernel1)
 
-                    cv2.imwrite(current_file_path + os.sep + save_img_dir  + image_format % count_num + suffix, resize_img)  # 保存图片指定区域
+                    # cv2.imwrite(current_file_path + os.sep + save_img_dir  + image_format % count_num + suffix, resize_img)  # 保存图片指定区域
 
                     current_person_small_img_list.append(resize_img)
                     count_num += 1
@@ -98,24 +98,23 @@ def save_resume_txt():
                 for key_word in key_word_list:
                     if key_word:
                         current_person_word_list.append(key_word)
-            # print(str(name)+':'+str(current_person_word_list))
             #获取人名,如果能识别到人名则copy一份原图,命名成'人名.jpg',识别不到人名,则仍然以原图片命名
             rename_current_people_image , nameFlag = getImageNameInResume(just_image_name,current_person_word_list)
-            print(rename_current_people_image , nameFlag)
+            # print(rename_current_people_image , nameFlag)
 
-            if current_person_word_list:#列表不是空才添加到all_txt_list
-                copy_img_name = current_file_path + os.sep + save_img_dir + rename_current_people_image
-                current_person_word_list.append([copy_img_name,nameFlag])
-                copyReadImg = cv2.imread(name)  # 读图片
-                print(copy_img_name)
-                cv2.imencode(suffix, copyReadImg)[1].tofile(copy_img_name) #中文图片名称处理
-                # current_person_word_list = [removeBlank(str(ele)) for ele in current_person_word_list]
-                current_person_word_list_no_need_last_column = []
-                for item in current_person_word_list[0:-1]:
-                    current_person_word_list_no_need_last_column.append(removeBlank(item))
-                current_person_word_list_no_need_last_column.append(current_person_word_list[-1])
-                all_txt_list.append(current_person_word_list_no_need_last_column)
+            copy_img_name = current_file_path + os.sep + save_img_dir + rename_current_people_image
+            copy_img_name = copy_img_name.replace("\\","/") #在windows上使用os.sep时，变成'\\'，所以要替换一下，不然这个路径的图片打不开
+            current_person_word_list.append([copy_img_name,nameFlag])
+            copyReadImg = cv2.imread(name)  # 读图片
+            cv2.imencode(suffix, copyReadImg)[1].tofile(copy_img_name) #中文图片名称处理
+            current_person_word_list_no_need_last_column = []
+            for item in current_person_word_list[0:-1]:
+                current_person_word_list_no_need_last_column.append(removeBlank(item))
+            current_person_word_list_no_need_last_column.append(current_person_word_list[-1]) #最后一列是列表,因此没办法去掉空白,所以单独append
+            all_txt_list.append(current_person_word_list_no_need_last_column)
+
     return all_txt_list
+
 
 
 
@@ -150,13 +149,16 @@ def getImageNameInResume( paraNameOfOriginalImage,paraThisPeopleWordslist ):
     :return: 原本的照片名或者人名.jpg
     '''
 
-    if paraNameOfOriginalImage and paraThisPeopleWordslist:
+    if paraNameOfOriginalImage and paraThisPeopleWordslist: #如果图片名字和关键词列表不是空
         for word in paraThisPeopleWordslist:
             if len(word)<5: #名字长度小于5
                 for first_name in all_name: #循环姓氏列表
                     if word.startswith(first_name):
                         return word + suffix,'haveName' #能找到姓氏就返回名字.jpg
         return paraNameOfOriginalImage,'noName' #找不到姓氏就返回原图名字
+    else:#如果图片名字或关键词列表是空,因为图片名字一定不是空,那么就是paraThisPeopleWordslist是空
+        return paraNameOfOriginalImage, 'noName'  # 找不到姓氏就返回原图名字
+
 
 
 def setWordsToCSV(paraAllTxtList):
@@ -168,7 +170,13 @@ def setWordsToCSV(paraAllTxtList):
     print(paraAllTxtList)
 
 
-
+def generateWordsList(paraAllTxtList):
+    '''
+    生成列表的格式是姓名,籍贯,专业,学校,电话,原始简历图片在服务器的地址
+    :param paraAllTxtList: 要处理的列表
+    :return: 要写进csv的列表
+    '''
+    pass
 
 
 def removeBlank(MyString):
@@ -186,6 +194,7 @@ def removeBlank(MyString):
 
 if __name__ == '__main__':
     all_txt_list = save_resume_txt()
+    generateWordsList(all_txt_list)
     setWordsToCSV(all_txt_list)
 
 

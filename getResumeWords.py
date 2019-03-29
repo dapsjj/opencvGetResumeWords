@@ -17,7 +17,7 @@ image_format = r'%04d' #要保存的图片的格式化的名称
 
 min_width = 15 #轮廓最小宽度
 min_height = 15 #轮廓最小高度
-pytesseract.pytesseract.tesseract_cmd = r"E:\tesseract-ocr\tesseract.exe"
+pytesseract.pytesseract.tesseract_cmd = r'E:\tesseract-ocr\tesseract.exe'
 
 kernel1 = cv2.getStructuringElement(cv2.MORPH_RECT,(3, 3))
 current_file_path = os.path.join(os.path.dirname(__file__)) #当前文件的路径
@@ -32,6 +32,18 @@ all_native_city = native_df.JG5.values.tolist() #所有籍贯的城市
 
 major_df =  pd.read_csv( current_file_path + os.sep +'zhuanye.csv' ) #关于专业的DataFrame
 all_major = major_df.major.values.tolist() #所有专业
+
+
+def merge_province_city(para_province_list,para_city_list):
+    my_province_and_city_list=[]
+    if len(para_province_list) == len(para_city_list):
+        for i in range(len(para_province_list)):
+            my_province_and_city_list.append(para_province_list[i]+para_city_list[i])
+
+        return my_province_and_city_list
+    else:
+        return my_province_and_city_list
+
 
 
 def save_resume_txt():
@@ -103,7 +115,7 @@ def save_resume_txt():
             # print(rename_current_people_image , nameFlag)
 
             copy_img_name = current_file_path + os.sep + save_img_dir + rename_current_people_image
-            copy_img_name = copy_img_name.replace("\\","/") #在windows上使用os.sep时，变成'\\'，所以要替换一下，不然这个路径的图片打不开
+            copy_img_name = copy_img_name.replace('\\','/') #在windows上使用os.sep时，变成'\\'，所以要替换一下，不然这个路径的图片打不开
             current_person_word_list.append([copy_img_name,nameFlag])
             copyReadImg = cv2.imread(name)  # 读图片
             cv2.imencode(suffix, copyReadImg)[1].tofile(copy_img_name) #中文图片名称处理
@@ -160,14 +172,13 @@ def getImageNameInResume( paraNameOfOriginalImage,paraThisPeopleWordslist ):
         return paraNameOfOriginalImage, 'noName'  # 找不到姓氏就返回原图名字
 
 
-
 def setWordsToCSV(paraAllTxtList):
     '''
     图片信息保存到csv,生成的csv的格式是姓名,籍贯,专业,学校,电话,原始简历图片在服务器的地址
     :param paraAllTxtList: 要处理的列表
     :return: 无
     '''
-    print(paraAllTxtList)
+    pass
 
 
 def generateWordsList(paraAllTxtList):
@@ -176,7 +187,84 @@ def generateWordsList(paraAllTxtList):
     :param paraAllTxtList: 要处理的列表
     :return: 要写进csv的列表
     '''
-    pass
+    all_person_info_list = []
+    for everyOneInformation in paraAllTxtList:
+        if len(everyOneInformation)==1: #没有画颜色的简历,类似这样的内容[['E:/test_opencv/opencvGetResumeWords/save_img/0003.jpg', 'noName']]
+            name = '_'
+            native = '_'
+            major = '_'
+            school = '_'
+            phone = '_'
+            original_image_address = everyOneInformation[-1][0]
+            all_person_info_list.append([name,native,major,school,phone,original_image_address])
+        else: #有颜色的简历
+            current_person_info = everyOneInformation[:-1] #不含有最后一列的信息数据
+
+            #姓名判断
+            if everyOneInformation[-1][1]=='haveName': #有名字
+                name = everyOneInformation[-1][0].split('/')[-1].split('.')[0]
+            else: #没有名字
+                name = '_'
+
+            #籍贯判断
+            native = '_'
+            school_suffix = ['学校','学院','大学']
+            for info in current_person_info:
+                native_flag = False
+                for school in school_suffix:
+                    if not info.endswith(school):#不是以学校结尾的信息才有可能是籍贯
+                        for native_value in province_and_city_list: #省市列表
+                            if info.find(native_value)!=-1: #从当前人员的信息中能找到籍贯信息
+                                native = native_value
+                                native_flag = True
+                                break
+                    if native_flag == True:
+                        break
+                if native_flag == True:
+                    break
+
+            #专业判断
+            major = '_'
+            for info in current_person_info:
+                major_flag = False
+                for major_value in all_major:
+                    if info.find(major_value) != -1:#从当前人员的信息中能找到专业信息
+                        major = major_value
+                        major_flag = True
+                        break
+                if major_flag==True:
+                    break
+
+            #学校判断
+            school = '_'
+            for info in current_person_info:
+                school_flag = False
+                for school_value in school_suffix:
+                    if info.endswith(school_value):
+                        school = info
+                        school_flag = True
+                        break
+                if school_flag==True:
+                    break
+
+            #电话判断
+            phone = '_'
+            for info in current_person_info:
+                phone_flag = False
+                number_list = re.findall(r'\d', info)
+                if len(number_list)>6:
+                    phone = info
+                    phone_flag = True
+                    break
+
+            #原始图片地址
+            original_image_address = everyOneInformation[-1][0]
+
+            all_person_info_list.append([name, native, major, school, phone, original_image_address])
+
+    return all_person_info_list
+
+
 
 
 def removeBlank(MyString):
@@ -193,8 +281,10 @@ def removeBlank(MyString):
 
 
 if __name__ == '__main__':
+    province_and_city_list = merge_province_city(all_native_province,all_native_city)
+
     all_txt_list = save_resume_txt()
-    generateWordsList(all_txt_list)
+    allPersonWordsList = generateWordsList(all_txt_list)
     setWordsToCSV(all_txt_list)
 
 

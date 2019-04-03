@@ -8,16 +8,20 @@ from PIL import Image
 import os
 import re
 import pandas as pd
+import csv
+import datetime
 
-
+today = datetime.datetime.now()
+today = today.strftime('%Y-%m-%d')
 img_root = r'root'+os.sep #原始文件路径
-save_img_dir = r'save_img'+os.sep #要保存的文件路径
+# save_img_dir = r'save_img'+os.sep #要保存的文件路径
+save_img_dir = r'\\172.17.4.76\2200878\songjiajun\resume'+os.sep #要保存的文件路径
 suffix = r'.jpg' #图片后缀
 image_format = r'%04d' #要保存的图片的格式化的名称
 
 min_width = 15 #轮廓最小宽度
 min_height = 15 #轮廓最小高度
-pytesseract.pytesseract.tesseract_cmd = r'E:\tesseract-ocr\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'E:/tesseract-ocr/tesseract.exe'
 
 kernel1 = cv2.getStructuringElement(cv2.MORPH_RECT,(3, 3))
 current_file_path = os.path.join(os.path.dirname(__file__)) #当前文件的路径
@@ -81,13 +85,8 @@ def save_resume_txt():
                 rect = cv2.minAreaRect(contour)  # 最小外接矩形
                 box = cv2.boxPoints(rect)
                 box = np.int0(box)
-                left =box[1][0]#最小外接矩形的左上角
-                top =box[1][1]#最小外接矩形的左上角
-                width = box[2][0]-box[1][0]#最小外接矩形的宽
-                height = box[0][1]-box[1][1]#最小外接矩形的高
                 try:
-                    part_of_src_img = readImg[y - 2:y + h + 2, x - 2:x + w + 2]
-                    # part_of_src_img = readImg[top - 2:top + width + 2, left - 2:left + width + 2]
+                    part_of_src_img = readImg[y - 2:y + h + 2, x - 2:x + w + 2] #外接矩形
                     part_of_src_img[np.where((part_of_src_img>=[0,100,100]).all(axis=2))] = [255,255,255] #原图被改变
                     deal_img = contrast_brightness(part_of_src_img, 1.5, 5)
                     gray = cv2.cvtColor(deal_img, cv2.COLOR_RGB2GRAY)  # 把输入图像灰度化
@@ -114,7 +113,8 @@ def save_resume_txt():
             rename_current_people_image , nameFlag = getImageNameInResume(just_image_name,current_person_word_list)
             # print(rename_current_people_image , nameFlag)
 
-            copy_img_name = current_file_path + os.sep + save_img_dir + rename_current_people_image
+            # copy_img_name = current_file_path + os.sep + save_img_dir + rename_current_people_image
+            copy_img_name = save_img_dir + rename_current_people_image
             copy_img_name = copy_img_name.replace('\\','/') #在windows上使用os.sep时，变成'\\'，所以要替换一下，不然这个路径的图片打不开
             current_person_word_list.append([copy_img_name,nameFlag])
             copyReadImg = cv2.imread(name)  # 读图片
@@ -178,7 +178,16 @@ def setWordsToCSV(paraAllTxtList):
     :param paraAllTxtList: 要处理的列表
     :return: 无
     '''
-    pass
+    print(paraAllTxtList)
+    title = [['姓名','籍贯','专业','学校','电话','图片路径']]
+    try:
+        if paraAllTxtList:
+            with open(save_img_dir + today + '.csv', "w", newline='', encoding="utf-8") as fo:
+                writer = csv.writer(fo)
+                writer.writerows(title)
+                writer.writerows(paraAllTxtList)
+    except Exception as ex:
+        raise ex
 
 
 def generateWordsList(paraAllTxtList):
@@ -266,7 +275,6 @@ def generateWordsList(paraAllTxtList):
 
 
 
-
 def removeBlank(MyString):
     '''
     :param MyString: 要替换空白的字符串
@@ -282,10 +290,9 @@ def removeBlank(MyString):
 
 if __name__ == '__main__':
     province_and_city_list = merge_province_city(all_native_province,all_native_city)
-
     all_txt_list = save_resume_txt()
     allPersonWordsList = generateWordsList(all_txt_list)
-    setWordsToCSV(all_txt_list)
+    setWordsToCSV(allPersonWordsList)
 
 
 

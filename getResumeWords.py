@@ -4,7 +4,6 @@
 import cv2
 import numpy as np
 import pytesseract
-from PIL import Image
 import os
 import re
 import pandas as pd
@@ -13,9 +12,9 @@ import datetime
 
 today = datetime.datetime.now()
 today = today.strftime('%Y-%m-%d')
-img_root = r'root'+os.sep #原始文件路径
-# save_img_dir = r'save_img'+os.sep #要保存的文件路径
-save_img_dir = r'\\172.17.4.76\2200878\songjiajun\resume'+os.sep #要保存的文件路径
+resume_csv_path = r'\\127.0.0.1\Peter\resume'+os.sep #原始文件路径
+img_root = r'\\127.0.0.1\Peter\resume\root'+os.sep #原始文件路径
+save_img_dir = r'\\127.0.0.1\Peter\resume\save_img'+os.sep #要保存的文件路径
 suffix = r'.jpg' #图片后缀
 image_format = r'%04d' #要保存的图片的格式化的名称
 
@@ -27,14 +26,14 @@ kernel1 = cv2.getStructuringElement(cv2.MORPH_RECT,(3, 3))
 current_file_path = os.path.join(os.path.dirname(__file__)) #当前文件的路径
 all_txt_list = []
 
-name_df =  pd.read_csv( current_file_path + os.sep +'Chinese_Family_Name.csv' ) #关于姓氏的DataFrame
+name_df = pd.read_csv( current_file_path + os.sep +'Chinese_Family_Name.csv' ) #关于姓氏的DataFrame
 all_name = name_df.NameB.values.tolist() #所有姓氏
 
-native_df =  pd.read_csv( current_file_path + os.sep +'jiguan.csv' ) #关于籍贯的DataFrame
+native_df = pd.read_csv( current_file_path + os.sep +'jiguan.csv' ) #关于籍贯的DataFrame
 all_native_province = native_df.JG4.values.tolist() #所有籍贯的省份
 all_native_city = native_df.JG5.values.tolist() #所有籍贯的城市
 
-major_df =  pd.read_csv( current_file_path + os.sep +'zhuanye.csv' ) #关于专业的DataFrame
+major_df = pd.read_csv( current_file_path + os.sep +'zhuanye.csv' ) #关于专业的DataFrame
 all_major = major_df.major.values.tolist() #所有专业
 
 
@@ -43,7 +42,6 @@ def merge_province_city(para_province_list,para_city_list):
     if len(para_province_list) == len(para_city_list):
         for i in range(len(para_province_list)):
             my_province_and_city_list.append(para_province_list[i]+para_city_list[i])
-
         return my_province_and_city_list
     else:
         return my_province_and_city_list
@@ -56,7 +54,8 @@ def save_resume_txt():
 
     for name in root_image:
         just_image_name = name #保存简历图片用的名字
-        name = current_file_path + os.sep + img_root + name
+        # name = current_file_path + os.sep + img_root + name
+        name = img_root + os.sep + name
         readImg = cv2.imread(name) #读图片
         # readImg[np.where((readImg >= [128, 150, 162]).all(axis=2))] = [255, 255, 255]  # 原图被改变
         current_person_small_img_list = []
@@ -96,9 +95,7 @@ def save_resume_txt():
                     resize_img = cv2.resize(binary, (int(w * mul), int(h * mul)))
                     resize_img = cv2.bilateralFilter(resize_img, 5, 105, 105)  # 双边滤波
                     resize_img = cv2.morphologyEx(resize_img, cv2.MORPH_OPEN, kernel1)
-
                     # cv2.imwrite(current_file_path + os.sep + save_img_dir  + image_format % count_num + suffix, resize_img)  # 保存图片指定区域
-
                     current_person_small_img_list.append(resize_img)
                     count_num += 1
                 except Exception as ex:
@@ -111,11 +108,10 @@ def save_resume_txt():
                         current_person_word_list.append(key_word)
             #获取人名,如果能识别到人名则copy一份原图,命名成'人名.jpg',识别不到人名,则仍然以原图片命名
             rename_current_people_image , nameFlag = getImageNameInResume(just_image_name,current_person_word_list)
-            # print(rename_current_people_image , nameFlag)
 
-            # copy_img_name = current_file_path + os.sep + save_img_dir + rename_current_people_image
             copy_img_name = save_img_dir + rename_current_people_image
-            copy_img_name = copy_img_name.replace('\\','/') #在windows上使用os.sep时，变成'\\'，所以要替换一下，不然这个路径的图片打不开
+            # copy_img_name = copy_img_name.replace('\\','/') #在windows上使用os.sep时，变成'\\'，所以要替换一下，不然这个路径的图片打不开
+            copy_img_name = copy_img_name.replace('/','\\') #在windows上使用os.sep时，变成'\\'，所以要替换一下，不然这个路径的图片打不开
             current_person_word_list.append([copy_img_name,nameFlag])
             copyReadImg = cv2.imread(name)  # 读图片
             cv2.imencode(suffix, copyReadImg)[1].tofile(copy_img_name) #中文图片名称处理
@@ -182,7 +178,7 @@ def setWordsToCSV(paraAllTxtList):
     title = [['姓名','籍贯','专业','学校','电话','图片路径']]
     try:
         if paraAllTxtList:
-            with open(save_img_dir + today + '.csv', "w", newline='', encoding="utf-8") as fo:
+            with open(resume_csv_path + today + '.csv', "w", newline='', encoding="utf-8") as fo:
                 writer = csv.writer(fo)
                 writer.writerows(title)
                 writer.writerows(paraAllTxtList)
@@ -211,7 +207,7 @@ def generateWordsList(paraAllTxtList):
 
             #姓名判断
             if everyOneInformation[-1][1]=='haveName': #有名字
-                name = everyOneInformation[-1][0].split('/')[-1].split('.')[0]
+                name = everyOneInformation[-1][0].split('\\')[-1].split('.')[0]
             else: #没有名字
                 name = '_'
 
@@ -268,9 +264,7 @@ def generateWordsList(paraAllTxtList):
 
             #原始图片地址
             original_image_address = everyOneInformation[-1][0]
-
             all_person_info_list.append([name, native, major, school, phone, original_image_address])
-
     return all_person_info_list
 
 

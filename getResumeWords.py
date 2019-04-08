@@ -258,6 +258,7 @@ def generateWordsList(paraAllTxtList):
                 phone_flag = False
                 number_list = re.findall(r'\d', info)
                 if len(number_list)>6:
+                    info = info.replace('-','')#替换电话中的横线
                     phone = info
                     phone_flag = True
                     break
